@@ -1,0 +1,7 @@
+keys.env
+keys_sample.env
+userlist.py
+.direnv/
+.envrc
+*.swp
+__pycache__/
