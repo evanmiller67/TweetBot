@@ -1,1 +1,1 @@
-userslist = ['utdreport','manutd','ManUnitedZone_']
+userslist = ['LeConteLodge','GreatSmokyNPS','SmokiesFriends','evanmil02640195']

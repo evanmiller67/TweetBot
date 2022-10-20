@@ -11,37 +11,27 @@ from dotenv import load_dotenv
 load_dotenv("keys.env")
 token = str(os.getenv("TELEGRAM_BOT"))
 chatid = int(os.getenv("CHAT_ID"))
+bearer = str(os.getenv("BEARER_TOKEN"))
 
-class TwitterStream(tp.StreamListener):
+class TwitterStream(tp.StreamingClient):
 
     def on_data(self,data):
         try:
             tb = TweetBot()
+            bot = Bot(token=token)
             d = json.loads(data)
             tweet_url = tb.get_tweet_url(json_data=d)
-            has_media = tb.tweet_has_media(json_data=d)
-            reply = d['in_reply_to_screen_name']
-            tw_name = d['user']['name']
-            tw_screen_name = d['user']['screen_name']
-            tweet_id = d['id_str']
-            tweet_link = "https://twitter.com/"+tw_screen_name+"/status/"+tweet_id
-            if 'extended_tweet' in d:
-                tg_text = d['extended_tweet']['full_text']
-            else:
-                tg_text = d['text']
-            #print(reply)
-            if(str(reply) == 'None'):
-                if('RT @' not in tg_text):    
-                    bot = Bot(token=token)
-                    if has_media:
-                        bot.sendMessage(chat_id=chatid,text=tg_text+"\n"+tweet_url+"\n"+"Via"+"|"+"<a href='"+tweet_link+"'>"+tw_name+"</a>"+"|",timeout=200,disable_web_page_preview=False,parse_mode=ParseMode.HTML)
-                    else:
-                         bot.sendMessage(chat_id=chatid,text=tg_text+"\n"+tweet_url+"\n"+"Via"+"|"+"<a href='"+tweet_link+"'>"+tw_name+"</a>"+"|",timeout=200,disable_web_page_preview=True,parse_mode=ParseMode.HTML)   
-                    time.sleep(3)
-                else:
-                    print("It's a retweet so not posting it")
-            else:
-                print("It's a reply so not posting that")
+            tg_text = d['data']['text']
+            tusername = d['includes']['users'][0]['username']
+            tname = d['includes']['users'][0]['name']
+            text = "{0}\n\n-- <a href='{1}'>{2}</a>".format(tg_text, tweet_url, tusername)
+            print("TwitterStream -- sending: {0}".format(text))
+            bot.sendMessage(chat_id=chatid,
+                            text=text,
+                            timeout=200,
+                            disable_web_page_preview=False,
+                            parse_mode=ParseMode.HTML
+            )
         except Exception as e:
             print(e)
 
@@ -66,46 +56,39 @@ class TweetBot():
         consumer_secret = str(os.getenv("CONSUMER_SECRET"))
         access_token = str(os.getenv("ACCESS_TOKEN"))
         access_token_secret = str(os.getenv("ACCESS_TOKEN_SECRET"))
-        autho = tp.OAuthHandler(consumer_key,consumer_secret)
-        autho.set_access_token(access_token,access_token_secret)
-        return autho
+        bearer_token = str(os.getenv("BEARER_TOKEN"))
+
+        client = tp.Client(
+            bearer_token=bearer_token,
+            consumer_key=consumer_key, consumer_secret=consumer_secret,
+            access_token=access_token, access_token_secret=access_token_secret
+        )
+        return client
 
 
     def fetch_tweets(self):
         api = self.authorize()
-        listener = TwitterStream()
-        account_list = self.get_tweet_acid(userslist)
-        stream_tweet = tp.Stream(api,listener,tweet_mode='extended')
-        stream_tweet.filter(follow=account_list)
+        listener = TwitterStream(bearer_token=api.bearer_token)
+        print("TweetBot - stream created")
+        users_search_string = " OR ".join("from:" + x for x in userslist)
+        rule = tp.StreamRule(value=users_search_string)
+        listener.add_rules(rule)
+        print("TweetBot - rule created")
+        listener.filter(expansions="author_id")
+        print("TweetBot - filtered")
 
     def get_tweet_acid(self,user_list):
         api = self.authorize()
-        api_object = tp.API(api)
         list_id = []
         for i in user_list:
-            user = api_object.get_user(screen_name=str(i))
+            user = tp.User(api.get_user(username=str(i)).data)
             id = user.id
             list_id.append(str(id))
         return list_id    
     
     def get_tweet_url(self,json_data):
-        tweet_url = ''
         try:
-            for url in json_data['entities']['urls']:
-                if not 'https://twitter.com' in url['expanded_url']:
-                    tweet_url = tweet_url+"\n"+str(url['expanded_url'])
+            return "https://twitter.com/{uname}/status/{tid}".format(uname=json_data['includes']['users'][0]['username'], tid=json_data['data']['id'])
         except:
-            tweet_url=''        
-        return tweet_url  
+            return ""  
     
-    def tweet_has_media(self,json_data):
-        if 'extended_entities' in json_data:
-            if 'media' in json_data['extended_entities']:
-                return True
-            else:
-                return False
-        else:
-            if 'media' in json_data['entities']:
-                return True
-            else:
-                return False            

@@ -19,8 +19,10 @@ if __name__ == '__main__':
     dispatcher = updater.dispatcher
     while True:
         try:
+            print("streambot starting...")
             startbot()
-            time.sleep(5)
+            print("streambot ended")
+            time.sleep(36000)
         except ProtocolError:
             continue
         

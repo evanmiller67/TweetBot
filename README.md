@@ -25,6 +25,24 @@ git push heroku HEAD:master --force
 ```
 3. Then go to the app page in your heroku dashboard and turn on the dynos.
 
+# Docker usage
+Complete all steps in the guide to complete  setup
+
+1. Build an image
+```
+docker build -t <my_good_tag_name> .
+```
+2. Run the image locally
+```
+docker run --detach --name <good_instance_name> <my_good_tag_name>
+```
+3. Optionally push your container somewhere to run on someone else's computer
+```
+docker image tag <my_good_tag_name>:latest [registry_host]/<my_good_tag_name>:laest
+docker image push <my_good_tag_name>:latest
+```
+
+
 # Sample Channel
 This channel is just a sample channel that streams the tweets from the Twitter accounts which are usually regular with Manchester United football club latest news and stuff.
 
